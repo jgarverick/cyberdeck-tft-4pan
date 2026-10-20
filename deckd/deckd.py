@@ -10,7 +10,7 @@ Talks to the CYD over USB serial (one JSON object per line) and feeds its four p
 Only the page that's on screen is polled quickly; the others refresh slowly so the
 CYD's alert LED stays meaningful. See PROTOCOL.md for the message format.
 """
-import glob, http.client, json, logging, os, signal, socket, subprocess, sys, threading, time
+import glob, http.client, json, logging, os, signal, socket, subprocess, sys, threading, time, traceback
 from pathlib import Path
 
 import psutil
@@ -525,8 +525,9 @@ class DeckD:
             return False
         s = serial.Serial()
         s.port, s.baudrate, s.timeout = port, self.cfg["baud"], 0
-        s.dtr = False  # don't hold the ESP32 in reset or boot mode
-        s.rts = False
+        # Leave DTR and RTS at their defaults (both asserted). The CYD's auto-flash circuit
+        # resets the ESP32 when RTS is asserted and DTR isn't, so changing them here would
+        # reboot the board every time the port opens.
         try:
             s.open()
         except (OSError, serial.SerialException) as e:
@@ -599,7 +600,10 @@ class DeckD:
             self.page = int(m.get("page", 0))
             if time.monotonic() - self.last_full < 1.5:
                 return  # the CYD's boot announcement and our hello crossed; one full sync is enough
-            log.info("CYD ready (fw %s, %s KB free)", m.get("fw"), int(m.get("heap", 0)) // 1024)
+            log.info("CYD ready (fw %s, %s KB free, last reset: %s)", m.get("fw"),
+                     int(m.get("heap", 0)) // 1024, m.get("reset", "?"))
+            if m.get("reset") in ("brownout", "panic", "task watchdog", "interrupt watchdog", "watchdog"):
+                log.warning("the CYD rebooted because of a %s", m.get("reset"))
             self.last_full = time.monotonic()
             self.send_all(with_theme=True)
         elif t == "resync":
@@ -703,9 +707,18 @@ class DeckD:
                     time.sleep(2)
                     continue
             for line in self.read_lines():
-                self.handle(line)
+                try:
+                    self.handle(line)
+                except Exception:
+                    # One bad message must not take the service down: a restart reopens the
+                    # port, and some USB serial adapters reset the CYD when that happens.
+                    log.error("error handling %r\n%s", line[:200], traceback.format_exc())
             if self.ser:
-                self.tick()
+                try:
+                    self.tick()
+                except Exception:
+                    log.error("error in periodic update\n%s", traceback.format_exc())
+                    time.sleep(1)
             time.sleep(0.02)
 
 
