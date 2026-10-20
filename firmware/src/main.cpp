@@ -128,6 +128,21 @@ void hal_backlight(uint8_t level) { tft.setBrightness(level); }
 
 uint32_t hal_free_heap() { return ESP.getFreeHeap(); }
 
+const char *hal_reset_reason() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON: return "power-on or EN pin";  // includes resets from the serial DTR/RTS lines
+    case ESP_RST_EXT: return "external pin";
+    case ESP_RST_SW: return "software";
+    case ESP_RST_PANIC: return "panic";
+    case ESP_RST_INT_WDT: return "interrupt watchdog";
+    case ESP_RST_TASK_WDT: return "task watchdog";
+    case ESP_RST_WDT: return "watchdog";
+    case ESP_RST_BROWNOUT: return "brownout";
+    case ESP_RST_DEEPSLEEP: return "deep sleep";
+    default: return "unknown";
+  }
+}
+
 // ------------------------------------------------------------------ touch calibration
 
 static void calibrate_touch(bool force) {

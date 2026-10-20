@@ -1083,6 +1083,7 @@ static void send_ready(const char *kind) {
   d["h"] = SCR_H;
   d["page"] = cur_page;
   d["heap"] = hal_free_heap();
+  d["reset"] = hal_reset_reason();
   send_doc(d);
 }
 

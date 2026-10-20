@@ -18,4 +18,5 @@ void hal_send(const char *line);        // write one JSON line to deckd
 void hal_led(bool r, bool g, bool b);   // onboard RGB LED
 void hal_backlight(uint8_t level);      // 0-255
 uint32_t hal_free_heap();               // bytes, reported to deckd for diagnostics
+const char *hal_reset_reason();         // why the board last restarted
 #endif
