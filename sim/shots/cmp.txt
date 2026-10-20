@@ -1,0 +1,148 @@
+{"name": "cmp", "title": "CLOWN MIGRATION PLAN", "bg": "#0b0a0f", "panel": "#16131c", "line": "#2e2638", "fg": "#ece6f4", "dim": "#6e6578", "accent": "#9142EE", "accent2": "#D00CF3", "hi": "#EE9C23", "ok": "#13C458", "bad": "#FF0000", "tabs": ["MIXER", "DECK", "BURN RATE", "SHIPPING"], "t": "theme"}
+tick 100
+{"t": "deck", "banks": [{"name": "MAIN", "buttons": [{"label": "Terminal", "icon": "terminal"}, {"label": "Browser", "icon": "eye"}, {"label": "Files", "icon": "folder"}, {"label": "Keys", "icon": "keyboard", "color": "accent2"}, {"label": "Bluetooth", "icon": "bluetooth", "type": "toggle"}, {"label": "Wi-Fi", "icon": "wifi", "type": "toggle"}, {"label": "Do not disturb", "icon": "bell", "type": "toggle"}, {"label": "Screenshot", "icon": "image"}, {"label": "Lock", "icon": "eye_off"}, {"label": "Theme swap", "icon": "shuffle", "color": "hi"}, {"label": "Reboot", "icon": "refresh", "type": "confirm"}, {"label": "Shut down", "icon": "power", "type": "confirm"}]}, {"name": "LAB", "buttons": [{"label": "SSH node1", "icon": "SSH"}]}, {"name": "MEDIA", "buttons": [{"label": "Play/Pause", "icon": "play"}]}]}
+{"t": "dstate", "bank": 0, "on": [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0]}
+{"t": "mix", "out": ["Built-in audio (HDMI)", "WH-1000XM5 (Bluetooth)", "USB DAC"], "out_sel": 1, "strips": [{"id": "sink:main", "name": "MASTER", "vol": 72, "mute": false}, {"id": "in:1", "name": "Firefox", "vol": 100, "mute": false}, {"id": "in:2", "name": "Spotify", "vol": 58, "mute": false}, {"id": "in:3", "name": "Discord", "vol": 80, "mute": true}, {"id": "src:mic", "name": "MIC", "vol": 64, "mute": false}]}
+{"t": "lvl", "v": [64, 71, 38, 0, 22]}
+{"t": "procs", "p": [{"pid": 711, "name": "Xorg", "cpu": 6.1, "mem": 2.1}, {"pid": 2311, "name": "picom", "cpu": 3.4, "mem": 0.8}, {"pid": 1401, "name": "dockerd", "cpu": 2.2, "mem": 1.9}, {"pid": 1263, "name": "python3 deckd.py", "cpu": 1.1, "mem": 0.6}, {"pid": 480, "name": "alacritty", "cpu": 0.9, "mem": 1.2}]}
+{"t": "dock", "ok": true, "c": [{"id": "a1b2c3d4e5f6", "name": "pihole", "state": "running", "status": "Up 3 hours (healthy)", "cpu": 1.2, "mem": "84M", "health": "healthy"}, {"id": "b2c3d4e5f6a1", "name": "homeassistant", "state": "running", "status": "Up 3 hours", "cpu": 4.8, "mem": "312M", "health": ""}, {"id": "c3d4e5f6a1b2", "name": "mosquitto", "state": "running", "status": "Up 3 hours", "cpu": 0.1, "mem": "6M", "health": ""}, {"id": "d4e5f6a1b2c3", "name": "readsb-adsb", "state": "running", "status": "Up 2 hours (unhealthy)", "cpu": 7.9, "mem": "41M", "health": "unhealthy"}, {"id": "e5f6a1b2c3d4", "name": "minecraft-bedrock", "state": "exited", "status": "Exited (0) 2 days ago", "cpu": 0, "mem": "", "health": ""}]}
+{"t": "sys", "cpu": 24, "cores": [31, 27, 34, 18], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 30, "cores": [27, 33, 42, 36], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 25, "cores": [17, 20, 29, 40], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 35, "cores": [32, 32, 44, 28], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 32, "cores": [17, 22, 33, 37], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 36, "cores": [32, 50, 40, 26], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 31, "cores": [46, 46, 44, 35], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 36, "cores": [24, 29, 27, 49], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 44, "cores": [52, 33, 36, 38], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 45, "cores": [35, 54, 50, 46], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 45, "cores": [38, 46, 35, 33], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 33, "cores": [28, 22, 20, 48], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 35, "cores": [47, 41, 42, 40], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 42, "cores": [53, 48, 44, 48], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 37, "cores": [39, 37, 27, 48], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 32, "cores": [19, 22, 43, 25], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 28, "cores": [34, 39, 23, 25], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 26, "cores": [12, 37, 12, 40], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 20, "cores": [10, 30, 30, 12], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 22, "cores": [21, 28, 12, 31], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 24, "cores": [30, 37, 37, 20], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 19, "cores": [29, 22, 8, 23], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 17, "cores": [12, 22, 29, 20], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 4, "cores": [8, 0, 15, 9], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 6, "cores": [17, 9, 1, 16], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 11, "cores": [23, 22, 16, 17], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 6, "cores": [7, 21, 2, 0], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 6, "cores": [6, 8, 9, 0], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 2, "cores": [0, 10, 14, 7], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 2, "cores": [16, 11, 2, 0], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 8, "cores": [12, 12, 0, 15], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 2, "cores": [1, 0, 0, 13], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 10, "cores": [19, 4, 6, 13], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 3, "cores": [1, 17, 11, 14], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 9, "cores": [14, 17, 15, 7], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 10, "cores": [0, 21, 23, 3], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 20, "cores": [17, 23, 30, 14], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 21, "cores": [14, 21, 7, 14], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 20, "cores": [32, 9, 28, 7], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 71, "cores": [61, 59, 63, 84], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 70, "cores": [82, 70, 59, 65], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 70, "cores": [85, 60, 63, 81], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 69, "cores": [83, 63, 71, 74], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 80, "cores": [68, 91, 71, 87], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 71, "cores": [79, 62, 63, 57], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 76, "cores": [71, 91, 79, 72], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 45, "cores": [35, 37, 59, 59], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 42, "cores": [56, 28, 54, 48], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 41, "cores": [52, 29, 32, 30], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 38, "cores": [40, 40, 34, 46], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 42, "cores": [49, 28, 31, 33], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 33, "cores": [35, 24, 36, 28], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 32, "cores": [38, 46, 23, 28], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 37, "cores": [29, 23, 28, 47], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 32, "cores": [45, 32, 18, 26], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 29, "cores": [26, 18, 25, 28], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 21, "cores": [20, 11, 7, 30], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 23, "cores": [20, 11, 17, 25], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 22, "cores": [21, 36, 23, 12], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+{"t": "sys", "cpu": 16, "cores": [19, 19, 22, 1], "mem": 41, "mem_used": "3.1G", "mem_total": "7.6G", "disk": 23, "temp": 61.4, "throttled": false, "up": "18.2K", "down": "1.4M", "uptime": "3h41m", "freq": 1800}
+tick 20
+touch 60 303
+tick 300
+snap shots/cmp-1-mix.ppm
+touch 180 303
+tick 300
+snap shots/cmp-2-deck.ppm
+touch 300 303
+tick 300
+snap shots/cmp-3-sys.ppm
+touch 420 303
+tick 300
+snap shots/cmp-4-dock.ppm
+touch 120 202
+tick 200
+{"t": "logs", "id": "d4e5f6a1b2c3", "lines": "2026-10-19 21:31:02 [readsb] Using rtlsdr device 0\n2026-10-19 21:31:02 [readsb] Gain set to 49.6 dB\n2026-10-19 21:31:44 [readsb] Lost 412 samples\n2026-10-19 21:32:10 [health] decoder rate below threshold\n2026-10-19 21:32:40 [readsb] 38 aircraft, 1241 msgs/s\n2026-10-19 21:33:10 [health] check failed (exit 1)\n2026-10-19 21:33:40 [readsb] 41 aircraft, 1302 msgs/s"}
+tick 300
+snap shots/cmp-5-dock-detail.ppm
+touch 270 77
+tick 300
+snap shots/cmp-6-hold-hint.ppm

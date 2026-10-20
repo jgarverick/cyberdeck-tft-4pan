@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Installs deckd for the current user on the Pi.
+# Run as your normal user (it calls sudo where it needs to):  bash install.sh
+set -euo pipefail
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+DEST="$HOME/.local/share/deckd"
+CFG="$HOME/.config/deckd"
+
+log() { printf '\e[1;35m[deckd]\e[0m %s\n' "$*"; }
+
+if [[ $EUID -eq 0 ]]; then
+  echo "Run this as your normal user, not with sudo." >&2
+  exit 1
+fi
+
+log "Installing packages..."
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+  python3 python3-serial python3-psutil pipewire pipewire-pulse wireplumber playerctl
+if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-pulsectl; then
+  log "python3-pulsectl isn't in your repositories; installing it with pip instead."
+  pip install --user --break-system-packages pulsectl
+fi
+
+log "Adding $USER to the dialout (serial) and docker groups..."
+sudo usermod -aG dialout "$USER"
+getent group docker >/dev/null && sudo usermod -aG docker "$USER" || log "No docker group yet (install Docker first for the DOCK page)."
+
+log "Copying files..."
+mkdir -p "$DEST" "$CFG" "$HOME/.config/systemd/user"
+cp "$HERE/deckd.py" "$HERE/themes.py" "$DEST/"
+[[ -f "$CFG/deck.json" ]] || cp "$HERE/deck.json" "$CFG/deck.json"
+[[ -f "$CFG/config.json" ]] || cat > "$CFG/config.json" <<'EOF'
+{
+  "port": "auto",
+  "baud": 921600,
+  "theme": "auto",
+  "brightness": 220,
+  "meters": true
+}
+EOF
+cp "$HERE/deckd.service" "$HOME/.config/systemd/user/deckd.service"
+
+log "Enabling the service..."
+systemctl --user daemon-reload
+systemctl --user enable deckd.service
+systemctl --user enable --now pipewire pipewire-pulse wireplumber 2>/dev/null || true
+
+log "Done. Log out and back in (for the new groups), then check it with:"
+log "  systemctl --user status deckd"
+log "  journalctl --user -u deckd -f"
+log "Edit buttons in $CFG/deck.json; the CYD updates within a few seconds of saving."
