@@ -62,6 +62,7 @@ void hal_led(bool r, bool g, bool b) {
 }
 void hal_backlight(uint8_t level) { printf("BACKLIGHT %d\n", level); }
 uint32_t hal_free_heap() { return 0; }
+const char *hal_reset_reason() { return "simulator"; }
 
 static void flush_cb(lv_disp_drv_t *drv, const lv_area_t *a, lv_color_t *px) {
   for (int y = a->y1; y <= a->y2; y++)
@@ -190,7 +191,11 @@ int main(int argc, char **argv) {
     char buf[4096];
     ssize_t n = read(serial_fd, buf, sizeof(buf));
     for (ssize_t i = 0; i < n; i++) {
-      if (buf[i] == '\n') { ui_handle_line(rx.c_str()); rx.clear(); }
+      if (buf[i] == '\n') {
+        printf("RX %u %.90s\n", real_ms(), rx.c_str());
+        ui_handle_line(rx.c_str());
+        rx.clear();
+      }
       else if (buf[i] != '\r') rx += buf[i];
     }
     while (next < timed.size() && real_ms() >= timed[next].first) run_command(timed[next++].second);

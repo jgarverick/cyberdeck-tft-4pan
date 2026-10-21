@@ -74,13 +74,37 @@ saving, with no reflashing. Each bank holds up to 12 buttons, and you can have u
 | `state`, `on`, `off` | For toggles: `state` exits with 0 when the toggle is on |
 | `page` or `bank` | For `page` buttons: the page (0-3) or bank to jump to |
 
-Example toggle:
+### Toggle buttons: watch commands and MQTT
+
+A toggle shows whether something is on. To keep it current without polling, give it one of these:
+
+| Field | Meaning |
+|---|---|
+| `watch` | A long-running command that prints a line whenever the state might have changed. `deckd` runs it once and re-checks `state` only when it prints. `gdbus monitor` works well for D-Bus services. |
+| `mqtt` | `state_topic` and `command_topic`, plus optional `payload_on` and `payload_off` (default `ON` and `OFF`). The button follows the state topic and publishes to the command topic when pressed. |
+
+Toggles with neither are checked every 10 seconds while the DECK page is visible.
+
+Example toggle with a D-Bus watcher:
 
 ```json
 { "label": "Wi-Fi", "icon": "wifi", "type": "toggle",
   "state": "[ \"$(nmcli radio wifi)\" = enabled ]",
-  "on": "nmcli radio wifi on", "off": "nmcli radio wifi off" }
+  "on": "nmcli radio wifi on", "off": "nmcli radio wifi off",
+  "watch": "gdbus monitor --system --dest org.freedesktop.NetworkManager --object-path /org/freedesktop/NetworkManager" }
 ```
+
+Example MQTT toggle and MQTT action button:
+
+```json
+{ "label": "Lab lights", "icon": "charge", "type": "toggle",
+  "mqtt": { "state_topic": "home/lab/lights/state", "command_topic": "home/lab/lights/set" } },
+{ "label": "Movie scene", "icon": "video",
+  "mqtt": { "command_topic": "home/scenes/activate", "payload": "movie" } }
+```
+
+To find what a D-Bus service announces, run `busctl monitor <service>` (with `sudo` for the
+system bus), change the setting from the desktop, and watch what appears.
 
 The default `deck.json` assumes a few things you may want to change: Chromium as the
 browser, `~/stacks` as your Docker Compose folder, and `playerctl` for media keys.
@@ -95,6 +119,19 @@ browser, `~/stacks` as your Docker Compose folder, and `playerctl` for media key
 | `theme` | `auto` | `auto` follows the desktop theme, or set `neon` or `cmp` |
 | `brightness` | `220` | CYD backlight, 0-255 |
 | `meters` | `true` | Audio level meters. Turn them off to save a little CPU |
+| `mqtt` | `{"host": "localhost", "port": 1883}` | MQTT broker for MQTT buttons. Add `username` and `password` if your broker needs them. Only used when `deck.json` has MQTT buttons |
+
+## MQTT broker
+
+MQTT buttons need a broker. To run Mosquitto on the Pi as a system service (it listens on
+localhost only), install with:
+
+```bash
+bash deckd/install.sh --with-broker
+```
+
+To use a broker that already runs elsewhere, such as Home Assistant's, skip `--with-broker`
+and set `mqtt.host` in `config.json` instead.
 
 ## Run the simulator and tests
 
@@ -106,6 +143,7 @@ make -C sim
 python3 sim/make_fixtures.py sim/shots        # write the sample scripts
 ./sim/sim sim/shots/cmp.txt                   # render every page as .ppm screenshots
 bash tests/e2e.sh                             # deckd + simulator end to end
+bash tests/e2e-events.sh                      # event paths, MQTT (needs mosquitto), idle traffic
 ```
 
 The serial protocol is documented in `deckd/PROTOCOL.md`.

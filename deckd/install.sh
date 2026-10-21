@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 # Installs deckd for the current user on the Pi.
-# Run as your normal user (it calls sudo where it needs to):  bash install.sh
+# Run as your normal user (it calls sudo where it needs to):
+#   bash install.sh                 # deckd only
+#   bash install.sh --with-broker   # also installs Mosquitto as a local MQTT broker
 set -euo pipefail
+
+WITH_BROKER=0
+[[ "${1:-}" == "--with-broker" ]] && WITH_BROKER=1
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 DEST="$HOME/.local/share/deckd"
@@ -17,10 +22,22 @@ fi
 log "Installing packages..."
 sudo apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-  python3 python3-serial python3-psutil pipewire pipewire-pulse wireplumber playerctl
+  python3 python3-serial python3-psutil pipewire pipewire-pulse wireplumber playerctl \
+  pulseaudio-utils libglib2.0-bin
 if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-pulsectl; then
   log "python3-pulsectl isn't in your repositories; installing it with pip instead."
   pip install --user --break-system-packages pulsectl
+fi
+
+if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-paho-mqtt; then
+  log "python3-paho-mqtt isn't in your repositories; installing it with pip instead."
+  pip install --user --break-system-packages paho-mqtt
+fi
+
+if [[ $WITH_BROKER -eq 1 ]]; then
+  log "Installing Mosquitto (listens on localhost only)..."
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends mosquitto mosquitto-clients
+  sudo systemctl enable --now mosquitto
 fi
 
 log "Adding $USER to the dialout (serial) and docker groups..."
@@ -29,7 +46,7 @@ getent group docker >/dev/null && sudo usermod -aG docker "$USER" || log "No doc
 
 log "Copying files..."
 mkdir -p "$DEST" "$CFG" "$HOME/.config/systemd/user"
-cp "$HERE/deckd.py" "$HERE/themes.py" "$DEST/"
+cp "$HERE/deckd.py" "$HERE/themes.py" "$HERE/events.py" "$DEST/"
 [[ -f "$CFG/deck.json" ]] || cp "$HERE/deck.json" "$CFG/deck.json"
 [[ -f "$CFG/config.json" ]] || cat > "$CFG/config.json" <<'EOF'
 {
@@ -37,7 +54,8 @@ cp "$HERE/deckd.py" "$HERE/themes.py" "$DEST/"
   "baud": 921600,
   "theme": "auto",
   "brightness": 220,
-  "meters": true
+  "meters": true,
+  "mqtt": { "host": "localhost", "port": 1883 }
 }
 EOF
 cp "$HERE/deckd.service" "$HOME/.config/systemd/user/deckd.service"

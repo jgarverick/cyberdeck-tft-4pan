@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Stand-in for `pactl subscribe`: turns the fake pulsectl's change log into pactl-style events.
+# It also prints a client event (which deckd must ignore) for every change.
+if [[ "${1:-}" != "subscribe" ]]; then exit 0; fi
+LOG="${FAKE_PULSE_LOG:-/tmp/fake-pulse.log}"
+touch "$LOG"
+tail -n0 -F "$LOG" 2>/dev/null | while read -r line; do
+  echo "Event 'new' on client #99"
+  echo "Event 'change' on sink #0"
+done

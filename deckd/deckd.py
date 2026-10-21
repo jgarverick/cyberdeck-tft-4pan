@@ -7,10 +7,13 @@ Talks to the CYD over USB serial (one JSON object per line) and feeds its four p
   2 SYS   psutil system stats and top processes
   3 DOCK  Docker Engine API over /var/run/docker.sock
 
-Only the page that's on screen is polled quickly; the others refresh slowly so the
-CYD's alert LED stays meaningful. See PROTOCOL.md for the message format.
+Everything that can be event-driven is: audio changes (pactl subscribe), container
+lifecycle and health (Docker events), container logs (followed while open), toggle
+buttons (D-Bus watch commands or MQTT). Only CPU, memory, temperature, processes, and
+container CPU/memory are sampled, mostly while their page is on screen.
+See PROTOCOL.md for the message format and events.py for the event sources.
 """
-import glob, http.client, json, logging, os, signal, socket, subprocess, sys, threading, time, traceback
+import glob, http.client, json, logging, os, shutil, signal, socket, subprocess, sys, termios, threading, time, traceback
 from pathlib import Path
 
 import psutil
@@ -18,6 +21,7 @@ import serial
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from themes import THEMES
+import events
 
 try:
     import pulsectl
@@ -34,6 +38,7 @@ DEFAULTS = {
     "meters": True,          # audio level meters (uses a little CPU)
     "docker_socket": "/var/run/docker.sock",
     "max_app_strips": 3,
+    "mqtt": {"host": "localhost", "port": 1883},  # used only if deck.json has MQTT buttons
 }
 PAGE_MIX, PAGE_DECK, PAGE_SYS, PAGE_DOCK = range(4)
 
@@ -94,7 +99,13 @@ class Mixer:
         self.strip_ids = []
         self.levels = []
         self._lock = threading.Lock()
-        self._meter_thread = None
+        self.proc = None
+        self.started_at = 0.0
+        self.retry_at = 0.0
+        self.crashes = []
+        self.meters_disabled = False
+        self.sent_ids = None
+        self.notice = ""
         self.error = ""
 
     def _connect(self):
@@ -192,60 +203,118 @@ class Mixer:
                 pass
         return sink.description or sink.name
 
-    # Level meters run in their own thread with their own connection, because
-    # get_peak_sample blocks briefly and pulsectl connections aren't thread-safe.
-    def start_meters(self, active):
-        if not self.cfg["meters"] or pulsectl is None or self._meter_thread:
-            return
-        self._meter_thread = threading.Thread(target=self._meter_loop, args=(active,), daemon=True)
-        self._meter_thread.start()
+    # Level meters run in a separate helper process (deckd.py --meters). Peak sampling goes
+    # through native PulseAudio code; if that crashes, only the helper dies, deckd keeps
+    # running, and the serial port (and the CYD) are left alone.
+    def meters_wanted(self, on):
+        if not self.cfg["meters"] or pulsectl is None or self.meters_disabled:
+            on = False
+        if on and self.proc is None:
+            now = time.monotonic()
+            if now < self.retry_at:
+                return
+            env = dict(os.environ)
+            self.proc = subprocess.Popen([sys.executable, os.path.abspath(__file__), "--meters"],
+                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                         stderr=subprocess.DEVNULL, text=True, bufsize=1, env=env)
+            self.started_at = now
+            self.sent_ids = None
+            threading.Thread(target=self._reader, args=(self.proc,), daemon=True).start()
+        elif not on and self.proc is not None:
+            self._stop()
 
-    def _meter_loop(self, active):
-        pulse = None
-        while True:
-            if not active():
-                time.sleep(0.3)
-                continue
+    def _reader(self, proc):
+        for line in proc.stdout:
             try:
-                if pulse is None:
-                    pulse = pulsectl.Pulse("deckd-meters")
-                info = pulse.server_info()
-                sinks = {s.name: s for s in pulse.sink_list()}
-                with self._lock:
-                    ids = list(self.strip_ids)
-                out = []
-                for sid in ids:
-                    kind, _, key = sid.partition(":")
-                    try:
-                        if kind == "sink" and key in sinks:
-                            peak = pulse.get_peak_sample(sinks[key].monitor_source_name, 0.08)
-                        elif kind == "in":
-                            si = next((s for s in pulse.sink_input_list() if str(s.index) == key), None)
-                            sink = next((s for s in sinks.values() if si and s.index == si.sink), None)
-                            peak = pulse.get_peak_sample(sink.monitor_source_name, 0.08, int(key)) if sink else 0
-                        elif kind == "src":
-                            peak = pulse.get_peak_sample(key, 0.08)
-                        else:
-                            peak = 0
-                    except Exception:
-                        peak = 0
-                    out.append(int(min(1.0, peak) * 100))
-                with self._lock:
-                    self.levels = out
-                _ = info
-            except Exception as e:
-                log.debug("meter loop: %s", e)
-                try:
-                    if pulse:
-                        pulse.close()
-                except Exception:
-                    pass
-                pulse = None
-                time.sleep(2)
+                vals = json.loads(line)
+            except ValueError:
+                continue
+            with self._lock:
+                self.levels = vals
+        code = proc.wait()
+        if code not in (0, -signal.SIGTERM) and proc is self.proc:
+            self._on_crash(code)
+
+    def _on_crash(self, code):
+        now = time.monotonic()
+        self.crashes = [t for t in self.crashes if now - t < 120] + [now]
+        log.warning("level meter helper exited with code %s (%d crash(es) in 2 minutes)", code, len(self.crashes))
+        self.proc = None
+        if len(self.crashes) >= 3:
+            self.meters_disabled = True
+            self.notice = "Level meters off: audio sampling keeps crashing"
+            log.error("level meters disabled until deckd restarts")
+        else:
+            self.retry_at = now + 5 * len(self.crashes)
+
+    def _stop(self):
+        proc, self.proc = self.proc, None
+        try:
+            proc.terminate()
+            proc.wait(timeout=2)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        with self._lock:
+            self.levels = []
+
+    def push_strip_ids(self):
+        if self.proc is None:
+            return
+        with self._lock:
+            ids = list(self.strip_ids)
+        if ids != self.sent_ids:
+            try:
+                self.proc.stdin.write(json.dumps(ids) + "\n")
+                self.proc.stdin.flush()
+                self.sent_ids = ids
+            except (OSError, ValueError):
+                pass
 
     def take_levels(self):
         with self._lock:
             return list(self.levels)
+
+
+def meter_helper():
+    """Runs as `deckd.py --meters`: reads strip id lists on stdin, prints levels on stdout."""
+    import select
+    pulse = pulsectl.Pulse("deckd-meters")
+    ids = []
+    while True:
+        if select.select([sys.stdin], [], [], 0)[0]:
+            line = sys.stdin.readline()
+            if not line:
+                return  # deckd went away
+            try:
+                ids = json.loads(line)
+            except ValueError:
+                pass
+        if not ids:
+            time.sleep(0.2)
+            continue
+        sinks = {s.name: s for s in pulse.sink_list()}
+        inputs = {str(si.index): si for si in pulse.sink_input_list()}
+        out = []
+        for sid in ids:
+            kind, _, key = sid.partition(":")
+            peak = 0.0
+            try:
+                if kind == "sink" and key in sinks:
+                    peak = pulse.get_peak_sample(sinks[key].monitor_source_name, 0.05)
+                elif kind == "in" and key in inputs:
+                    sink = next((s for s in sinks.values() if s.index == inputs[key].sink), None)
+                    if sink:
+                        peak = pulse.get_peak_sample(sink.monitor_source_name, 0.05, int(key))
+                elif kind == "src":
+                    peak = pulse.get_peak_sample(key, 0.05)
+            except Exception:
+                peak = 0.0
+            out.append(int(min(1.0, peak) * 100))
+        print(json.dumps(out), flush=True)
+        time.sleep(0.1)
 
 
 # ----------------------------------------------------------------------------- system
@@ -424,15 +493,21 @@ class Docker:
 # ----------------------------------------------------------------------------- deck
 
 class Deck:
+    """deck.json plus a cache of toggle states, kept current by events instead of polling."""
+
     def __init__(self):
         self.path = CFG_DIR / "deck.json"
         self.mtime = 0
         self.banks = []
+        self.state = {}  # (bank, index) -> bool
 
     def reload_if_changed(self):
         try:
             m = self.path.stat().st_mtime
         except OSError:
+            if self.mtime != -1:
+                log.warning("no deck.json at %s; the DECK page stays empty until it exists", self.path)
+                self.mtime = -1
             return False
         if m == self.mtime:
             return False
@@ -443,6 +518,7 @@ class Deck:
         except (OSError, ValueError) as e:
             log.error("deck.json is invalid: %s", e)
             return False
+        self.state = {}
         return True
 
     def message(self):
@@ -452,31 +528,23 @@ class Deck:
              "buttons": [{k: v for k, v in btn.items() if k in keep} for btn in b.get("buttons", [])[:12]]}
             for b in self.banks]}
 
-    def toggle_states(self, bank):
+    def buttons(self):
+        for b, bank in enumerate(self.banks):
+            for i, btn in enumerate(bank.get("buttons", [])[:12]):
+                yield b, i, btn
+
+    def toggles(self):
+        return [(b, i, btn) for b, i, btn in self.buttons() if btn.get("type") == "toggle"]
+
+    def dstate(self, bank):
         if not 0 <= bank < len(self.banks):
             return None
-        on = []
-        for btn in self.banks[bank].get("buttons", [])[:12]:
-            if btn.get("type") == "toggle" and btn.get("state"):
-                code, _ = run_shell(btn["state"], timeout=3)
-                on.append(code == 0)
-            else:
-                on.append(False)
-        return {"t": "dstate", "bank": bank, "on": on}
+        n = len(self.banks[bank].get("buttons", [])[:12])
+        return {"t": "dstate", "bank": bank, "on": [bool(self.state.get((bank, i))) for i in range(n)]}
 
-    def press(self, bank, idx):
-        try:
-            btn = self.banks[bank]["buttons"][idx]
-        except (IndexError, KeyError):
-            return None
+    def run_action(self, btn):
+        """Runs a non-toggle button. Returns (toast text, level) or None."""
         label = btn.get("label", "button")
-        if btn.get("type") == "toggle":
-            code, _ = run_shell(btn.get("state", "false"), timeout=3)
-            cmd = btn.get("off") if code == 0 else btn.get("on")
-            if cmd:
-                rc, out = run_shell(cmd, timeout=15)
-                return (f"{label}: {'off' if code == 0 else 'on'}", "ok") if rc == 0 else (f"{label} failed: {out[:40]}", "bad")
-            return None
         if btn.get("i3"):
             rc, out = run_shell(f"i3-msg {json.dumps(btn['i3'])}", timeout=5)
             return None if rc == 0 else (f"i3: {out[:40]}", "bad")
@@ -491,22 +559,134 @@ class Deck:
 
 # ----------------------------------------------------------------------------- daemon
 
+# How often the few things with no change events are sampled (seconds).
+SYS_VISIBLE, SYS_HIDDEN = 1, 10          # CPU, memory, temperature (hidden: keeps the alert LED honest)
+PROCS_VISIBLE = 2
+DOCK_STATS_VISIBLE = 3                   # container CPU and memory while DOCK is on screen
+FALLBACK = {"mix": 5, "dock": 30, "toggle": 10}   # only when an event source is unavailable
+HEARTBEAT = 3                            # the CYD treats 6 s of silence as a lost link
+
+
 class DeckD:
     def __init__(self, cfg):
         self.cfg = cfg
         self.ser = None
         self.page = 0
         self.theme = detect_theme(cfg)
+        self.bus = events.EventBus()
         self.mixer = Mixer(cfg)
         self.sys = SystemStats()
         self.docker = Docker(cfg["docker_socket"])
         self.deck = Deck()
-        self.deck.reload_if_changed()
         self.dock_sel = ""
         self.next_due = {}
         self.rx = b""
         self.bank_shown = 0
         self.last_full = 0.0
+        self.last_lvl = None
+        self.last_tx = 0.0
+        self.watchers = {}       # watch command -> CommandWatcher
+        self.logs = None         # DockerLogs for the open container
+        self.mqtt = None
+        self.mqtt_warned = False
+
+        self.mix_events = events.pactl_watcher(self.bus).start() if shutil.which("pactl") else None
+        if self.mix_events is None:
+            log.warning("pactl not found (install pulseaudio-utils); mixer falls back to polling")
+        self.dock_events = events.DockerEvents(cfg["docker_socket"], self.bus).start()
+        if self.deck.reload_if_changed():
+            self.on_deck_loaded()
+
+    # -- deck and toggles
+    def on_deck_loaded(self):
+        wanted = {btn["watch"] for _, _, btn in self.deck.toggles() if btn.get("watch")}
+        for cmd in list(self.watchers):
+            if cmd not in wanted:
+                self.watchers.pop(cmd).stop()
+        for cmd in wanted - set(self.watchers):
+            self.watchers[cmd] = events.CommandWatcher(cmd, self.bus, ("watch", cmd)).start()
+        topics = [btn["mqtt"]["state_topic"] for _, _, btn in self.deck.buttons()
+                  if isinstance(btn.get("mqtt"), dict) and btn["mqtt"].get("state_topic")]
+        if topics or any(isinstance(btn.get("mqtt"), dict) for _, _, btn in self.deck.buttons()):
+            if self.mqtt is None:
+                self.mqtt = events.MqttBridge(self.cfg.get("mqtt"), self.bus).start()
+                if self.mqtt.error:
+                    log.warning("MQTT buttons unavailable: %s", self.mqtt.error)
+            self.mqtt.set_topics(topics)
+        self.refresh_toggles(lambda b, i, btn: True)
+
+    def refresh_toggles(self, which):
+        """Re-reads the toggles matched by which(bank, index, button); returns banks that changed."""
+        changed = set()
+        for b, i, btn in self.deck.toggles():
+            if not which(b, i, btn):
+                continue
+            m = btn.get("mqtt")
+            if isinstance(m, dict) and m.get("state_topic"):
+                val = self.mqtt.values.get(m["state_topic"]) if self.mqtt else None
+                if val is None:
+                    continue
+                on = val == str(m.get("payload_on", "ON"))
+            elif btn.get("state"):
+                code, _ = run_shell(btn["state"], timeout=3)
+                on = code == 0
+            else:
+                continue
+            if self.deck.state.get((b, i)) != on:
+                self.deck.state[(b, i)] = on
+                changed.add(b)
+        return changed
+
+    def watched(self, btn):
+        """True when a toggle is kept current by an event source (no polling needed)."""
+        m = btn.get("mqtt")
+        if isinstance(m, dict) and m.get("state_topic"):
+            return True
+        w = self.watchers.get(btn.get("watch"))
+        return bool(w and w.alive)
+
+    def press(self, bank, idx):
+        try:
+            btn = self.deck.banks[bank]["buttons"][idx]
+        except (IndexError, KeyError):
+            return None
+        label = btn.get("label", "button")
+        m = btn.get("mqtt") if isinstance(btn.get("mqtt"), dict) else None
+        if btn.get("type") == "toggle":
+            on = bool(self.deck.state.get((bank, idx)))
+            if m:
+                payload = m.get("payload_off", "OFF") if on else m.get("payload_on", "ON")
+                if not (self.mqtt and self.mqtt.publish(m["command_topic"], payload)):
+                    return (f"{label}: MQTT not connected", "bad")
+                if not m.get("state_topic"):  # no feedback topic: assume it worked
+                    self.deck.state[(bank, idx)] = not on
+                return None
+            cmd = btn.get("off") if on else btn.get("on")
+            if not cmd:
+                return None
+            rc, out = run_shell(cmd, timeout=15)
+            self.refresh_toggles(lambda b, i, _: (b, i) == (bank, idx))
+            return (f"{label}: {'off' if on else 'on'}", "ok") if rc == 0 else (f"{label} failed: {out[:40]}", "bad")
+        if m and m.get("command_topic"):
+            ok = self.mqtt and self.mqtt.publish(m["command_topic"], str(m.get("payload", "")))
+            return None if ok else (f"{label}: MQTT not connected", "bad")
+        return self.deck.run_action(btn)
+
+    def send_dstate(self, banks=None):
+        if banks is None or self.bank_shown in banks:
+            st = self.deck.dstate(self.bank_shown)
+            if st:
+                self.send(st)
+
+    # -- docker logs follow the open detail view
+    def follow_logs(self, cid):
+        if self.logs and self.logs.cid == cid:
+            return
+        if self.logs:
+            self.logs.stop()
+            self.logs = None
+        if cid:
+            self.logs = events.DockerLogs(self.cfg["docker_socket"], self.bus, cid).start()
 
     # -- serial
     def find_port(self):
@@ -533,6 +713,12 @@ class DeckD:
         except (OSError, serial.SerialException) as e:
             log.warning("can't open %s: %s", port, e)
             return False
+        try:
+            attrs = termios.tcgetattr(s.fd)
+            attrs[2] &= ~termios.HUPCL  # keep DTR/RTS steady on close so the CYD doesn't reset
+            termios.tcsetattr(s.fd, termios.TCSANOW, attrs)
+        except (OSError, AttributeError, termios.error) as e:
+            log.debug("couldn't clear HUPCL: %s", e)
         self.ser = s
         self.last_full = 0.0
         log.info("connected to %s", port)
@@ -542,6 +728,7 @@ class DeckD:
     def send(self, msg):
         if not self.ser:
             return
+        self.last_tx = time.monotonic()
         try:
             self.ser.write((json.dumps(msg, separators=(",", ":")) + "\n").encode())
         except (OSError, serial.SerialException) as e:
@@ -578,9 +765,7 @@ class DeckD:
             self.send(dict(THEMES[self.theme], t="theme"))
             self.send({"t": "bl", "v": int(self.cfg["brightness"])})
         self.send(self.deck.message())
-        st = self.deck.toggle_states(self.bank_shown)
-        if st:
-            self.send(st)
+        self.send_dstate()
         self.send(self.mixer.state())
         self.send(self.sys.sample())
         self.send(self.sys.top())
@@ -611,31 +796,32 @@ class DeckD:
         elif t == "page":
             self.page = int(m.get("p", 0))
             self.next_due.clear()
+            if self.page != PAGE_DOCK:
+                self.follow_logs("")
+            elif self.dock_sel:
+                self.follow_logs(self.dock_sel)
         elif t == "bank":
             self.bank_shown = int(m.get("b", 0))
-            st = self.deck.toggle_states(self.bank_shown)
-            if st:
-                self.send(st)
+            self.send_dstate()
         elif t == "vol":
             self.mixer.set_volume(m.get("id", ""), m.get("v", 0))
-            self.next_due["mix"] = time.monotonic() + 0.4
         elif t == "mute":
             self.mixer.toggle_mute(m.get("id", ""))
-            self.send(self.mixer.state())
+            if not (self.mix_events and self.mix_events.alive):
+                self.send(self.mixer.state())
         elif t == "out":
             name = self.mixer.set_output(int(m.get("i", 0)))
             if name:
                 self.send({"t": "toast", "msg": f"Output: {name[:30]}", "level": "ok"})
-            self.send(self.mixer.state())
+            if not (self.mix_events and self.mix_events.alive):
+                self.send(self.mixer.state())
         elif t == "btn":
             bank, idx = int(m.get("bank", 0)), int(m.get("i", 0))
             self.bank_shown = bank
-            result = self.deck.press(bank, idx)
+            result = self.press(bank, idx)
             if result:
                 self.send({"t": "toast", "msg": result[0][:48], "level": result[1]})
-            st = self.deck.toggle_states(bank)
-            if st:
-                self.send(st)
+            self.send_dstate()
         elif t == "kill":
             pid = int(m.get("pid", 0))
             if pid <= 1 or pid == os.getpid():
@@ -655,12 +841,30 @@ class DeckD:
                 self.send({"t": "toast", "msg": f"{action}: done", "level": "ok"})
             except (OSError, RuntimeError) as e:
                 self.send({"t": "toast", "msg": f"{action} failed: {str(e)[:30]}", "level": "bad"})
-            self.next_due["dock"] = 0
+            if not self.dock_events.alive:
+                self.bus.post("dock")
         elif t == "dsel":
             self.dock_sel = m.get("id", "")
-            self.next_due["logs"] = 0
+            self.follow_logs(self.dock_sel if self.page == PAGE_DOCK else "")
 
-    # -- periodic work
+    # -- events
+    def on_event(self, key):
+        if key == "mix":
+            self.send(self.mixer.state())
+        elif key == "dock":
+            self.send(self.docker.state(with_stats=(self.page == PAGE_DOCK)))
+        elif isinstance(key, tuple) and key[0] == "watch":
+            cmd = key[1]
+            self.send_dstate(self.refresh_toggles(lambda b, i, btn: btn.get("watch") == cmd))
+        elif isinstance(key, tuple) and key[0] == "mqtt":
+            topic = key[1]
+            self.send_dstate(self.refresh_toggles(
+                lambda b, i, btn: isinstance(btn.get("mqtt"), dict) and btn["mqtt"].get("state_topic") == topic))
+        elif isinstance(key, tuple) and key[0] == "logs":
+            if self.logs and self.logs.cid == key[1] == self.dock_sel:
+                self.send({"t": "logs", "id": key[1], "lines": self.logs.text() or "(no output yet)"})
+
+    # -- the few things that have to be sampled
     def due(self, key, interval):
         now = time.monotonic()
         if now >= self.next_due.get(key, 0):
@@ -670,37 +874,55 @@ class DeckD:
 
     def tick(self):
         p = self.page
-        if self.due("mix", 0.5 if p == PAGE_MIX else 4):
+        for key in self.bus.take():
+            self.on_event(key)
+
+        # Fallbacks, only while an event source is unavailable
+        if not (self.mix_events and self.mix_events.alive) and self.due("mix", FALLBACK["mix"]):
             self.send(self.mixer.state())
-        if p == PAGE_MIX and self.cfg["meters"] and self.due("lvl", 0.1):
-            lv = self.mixer.take_levels()
-            if lv:
-                self.send({"t": "lvl", "v": lv})
-        if self.due("sys", 1 if p == PAGE_SYS else 5):
-            self.send(self.sys.sample())
-        if p == PAGE_SYS and self.due("procs", 2):
-            self.send(self.sys.top())
-        if self.due("dock", 3 if p == PAGE_DOCK else 15):
+        if not self.dock_events.alive and self.due("dock", FALLBACK["dock"]):
             self.send(self.docker.state(with_stats=(p == PAGE_DOCK)))
-        if p == PAGE_DOCK and self.dock_sel and self.due("logs", 3):
-            try:
-                self.send({"t": "logs", "id": self.dock_sel, "lines": self.docker.logs(self.dock_sel)})
-            except (OSError, RuntimeError) as e:
-                self.send({"t": "logs", "id": self.dock_sel, "lines": f"(logs unavailable: {e})"})
-        if p == PAGE_DECK and self.due("dstate", 2):
-            st = self.deck.toggle_states(self.bank_shown)
-            if st:
-                self.send(st)
+        if p == PAGE_DECK and self.due("toggle", FALLBACK["toggle"]):
+            self.send_dstate(self.refresh_toggles(lambda b, i, btn: b == self.bank_shown and not self.watched(btn)))
+        if self.mqtt and self.mqtt.error and not self.mqtt_warned:
+            self.mqtt_warned = True
+            self.send({"t": "toast", "msg": "MQTT buttons offline", "level": "bad"})
+
+        # Inherently sampled data
+        self.mixer.meters_wanted(p == PAGE_MIX)
+        self.mixer.push_strip_ids()
+        if p == PAGE_MIX and self.due("lvl", 0.2):
+            lv = self.mixer.take_levels()
+            if lv and lv != self.last_lvl:
+                self.last_lvl = lv
+                self.send({"t": "lvl", "v": lv})
+        if self.mixer.notice:
+            self.send({"t": "toast", "msg": self.mixer.notice, "level": "bad"})
+            self.mixer.notice = ""
+        if self.due("sys", SYS_VISIBLE if p == PAGE_SYS else SYS_HIDDEN):
+            self.send(self.sys.sample())
+        if p == PAGE_SYS and self.due("procs", PROCS_VISIBLE):
+            self.send(self.sys.top())
+        if p == PAGE_DOCK and self.dock_events.alive and self.due("dockstats", DOCK_STATS_VISIBLE):
+            self.send(self.docker.state(with_stats=True))
+
+        # With nothing to report the line can go quiet; a heartbeat keeps the CYD's
+        # link watchdog (6 s) from deciding deckd is gone.
+        if time.monotonic() - self.last_tx > HEARTBEAT:
+            self.send({"t": "hb"})
+
+        # Config files: a stat() call, no process
         if self.due("files", 2):
             if self.deck.reload_if_changed():
+                self.on_deck_loaded()
                 self.send(self.deck.message())
+                self.send_dstate()
             theme = detect_theme(self.cfg)
             if theme != self.theme:
                 self.theme = theme
                 self.send(dict(THEMES[theme], t="theme"))
 
     def run(self):
-        self.mixer.start_meters(lambda: self.page == PAGE_MIX and self.ser is not None)
         while True:
             if not self.ser:
                 if not self.open():
@@ -710,19 +932,21 @@ class DeckD:
                 try:
                     self.handle(line)
                 except Exception:
-                    # One bad message must not take the service down: a restart reopens the
-                    # port, and some USB serial adapters reset the CYD when that happens.
+                    # One bad message must not take the service down.
                     log.error("error handling %r\n%s", line[:200], traceback.format_exc())
             if self.ser:
                 try:
                     self.tick()
                 except Exception:
-                    log.error("error in periodic update\n%s", traceback.format_exc())
+                    log.error("error in update\n%s", traceback.format_exc())
                     time.sleep(1)
             time.sleep(0.02)
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--meters":
+        meter_helper()
+        return
     logging.basicConfig(level=os.environ.get("DECKD_LOG", "INFO"),
                         format="%(asctime)s %(levelname)s %(message)s")
     cfg = load_config()

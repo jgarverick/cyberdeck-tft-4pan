@@ -37,18 +37,32 @@ side can add messages without breaking the other.
 | `logs` | `id`, `lines` | Recent log lines for the selected container. |
 | `toast` | `msg`, `level` (`ok`, `bad`, or `info`) | A short message above the tab bar. |
 | `page` | `p` | Switch the CYD to a page. |
+| `hb` | | Heartbeat, sent after 3 seconds without other traffic so the CYD's 6-second link watchdog stays happy. |
 
-## Polling rates
+## Where updates come from
+
+`deckd` is event-driven wherever the Pi offers events. Each event source is a supervised
+watcher in `events.py` that reconnects with a backoff; while a source is unavailable, `deckd`
+falls back to slow polling for just that data.
+
+| Data | Source | Fallback while the source is down |
+|---|---|---|
+| Mixer (devices, volumes, mutes, streams) | `pactl subscribe` | Poll every 5 s |
+| Containers (start, stop, die, health) | Docker `/events` stream | Poll every 30 s |
+| Container logs | Docker log stream (`follow=1`) while the detail view is open | None |
+| Toggle buttons with `watch` | The watch command's output (for example, `gdbus monitor`) | Poll every 10 s while DECK is visible |
+| Toggle buttons with `mqtt` | MQTT state topic | None (shows the last known state) |
+| Toggle buttons without either | Polled every 10 s while DECK is visible, and right after a press | |
+| `deck.json` and theme | File `stat()` every 2 s (no process) | |
+
+A few things have no change events and are sampled:
 
 | Data | Page visible | Page hidden |
 |---|---|---|
-| Mixer | 0.5 s | 4 s |
-| Level meters | 0.1 s | off |
-| System stats | 1 s | 5 s |
+| CPU, memory, temperature, network | 1 s | 10 s (keeps the alert LED current) |
 | Processes | 2 s | off |
-| Containers | 3 s, with CPU and memory | 15 s, state only |
-| Container logs | 3 s while the detail view is open | off |
-| Toggle states | 2 s | off |
+| Container CPU and memory | 3 s | off |
+| Level meters | 5 per second | off |
 
-The hidden-page refreshes keep the CYD's RGB LED meaningful: it turns red when the SoC is at
-75 °C or above, the Pi is throttling, or a container is unhealthy or restarting.
+The CYD's RGB LED turns red when the SoC is at 75 °C or above, the Pi is throttling, or a
+container is unhealthy or restarting.

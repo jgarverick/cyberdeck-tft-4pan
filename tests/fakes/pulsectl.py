@@ -72,5 +72,7 @@ class Pulse:
 
     def get_peak_sample(self, source, timeout, stream_idx=None):
         import random, time
+        if os.environ.get("FAKE_PULSE_CRASH"):
+            os.abort()  # simulate a native crash inside libpulse
         time.sleep(timeout / 4)
         return random.uniform(0.2, 0.8)

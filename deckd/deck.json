@@ -3,76 +3,281 @@
     {
       "name": "MAIN",
       "buttons": [
-        { "label": "Terminal", "icon": "terminal", "run": "alacritty" },
-        { "label": "Browser", "icon": "eye", "run": "chromium" },
-        { "label": "System monitor", "icon": "bars", "run": "alacritty -e btop" },
-        { "label": "Keys", "icon": "keyboard", "color": "accent2", "run": "~/.local/bin/deck-keys" },
-
-        { "label": "Bluetooth", "icon": "bluetooth", "type": "toggle",
+        {
+          "label": "Terminal",
+          "icon": "terminal",
+          "run": "alacritty"
+        },
+        {
+          "label": "Browser",
+          "icon": "eye",
+          "run": "chromium"
+        },
+        {
+          "label": "System monitor",
+          "icon": "bars",
+          "run": "alacritty -e btop"
+        },
+        {
+          "label": "Keys",
+          "icon": "keyboard",
+          "color": "accent2",
+          "run": "~/.local/bin/deck-keys"
+        },
+        {
+          "label": "Bluetooth",
+          "icon": "bluetooth",
+          "type": "toggle",
           "state": "bluetoothctl show | grep -q 'Powered: yes'",
-          "on": "bluetoothctl power on", "off": "bluetoothctl power off" },
-        { "label": "Wi-Fi", "icon": "wifi", "type": "toggle",
+          "on": "bluetoothctl power on",
+          "off": "bluetoothctl power off",
+          "watch": "gdbus monitor --system --dest org.bluez --object-path /org/bluez/hci0"
+        },
+        {
+          "label": "Wi-Fi",
+          "icon": "wifi",
+          "type": "toggle",
           "state": "[ \"$(nmcli radio wifi)\" = enabled ]",
-          "on": "nmcli radio wifi on", "off": "nmcli radio wifi off" },
-        { "label": "Do not disturb", "icon": "bell", "type": "toggle",
+          "on": "nmcli radio wifi on",
+          "off": "nmcli radio wifi off",
+          "watch": "gdbus monitor --system --dest org.freedesktop.NetworkManager --object-path /org/freedesktop/NetworkManager"
+        },
+        {
+          "label": "Do not disturb",
+          "icon": "bell",
+          "type": "toggle",
           "state": "[ \"$(dunstctl is-paused)\" = true ]",
-          "on": "dunstctl set-paused true", "off": "dunstctl set-paused false" },
-        { "label": "Screenshot", "icon": "image",
-          "run": "mkdir -p ~/Pictures && import -window root ~/Pictures/deck-$(date +%Y%m%d-%H%M%S).png && notify-send 'Screenshot saved'" },
-
-        { "label": "Lock", "icon": "eye_off", "run": "i3lock -c 0a0a12" },
-        { "label": "Docker", "icon": "drive", "color": "accent2", "type": "page", "page": 3 },
-        { "label": "Reboot", "icon": "refresh", "type": "confirm", "run": "systemctl reboot" },
-        { "label": "Shut down", "icon": "power", "type": "confirm", "run": "systemctl poweroff" }
+          "on": "dunstctl set-paused true",
+          "off": "dunstctl set-paused false",
+          "watch": "gdbus monitor --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications"
+        },
+        {
+          "label": "Screenshot",
+          "icon": "image",
+          "run": "mkdir -p ~/Pictures && import -window root ~/Pictures/deck-$(date +%Y%m%d-%H%M%S).png && notify-send 'Screenshot saved'"
+        },
+        {
+          "label": "Lock",
+          "icon": "eye_off",
+          "run": "i3lock -c 0a0a12"
+        },
+        {
+          "label": "Docker",
+          "icon": "drive",
+          "color": "accent2",
+          "type": "page",
+          "page": 3
+        },
+        {
+          "label": "Reboot",
+          "icon": "refresh",
+          "type": "confirm",
+          "run": "systemctl reboot"
+        },
+        {
+          "label": "Shut down",
+          "icon": "power",
+          "type": "confirm",
+          "run": "systemctl poweroff"
+        }
       ]
     },
     {
       "name": "WINDOWS",
       "buttons": [
-        { "label": "Workspace 1", "icon": "1", "i3": "workspace number 1" },
-        { "label": "Workspace 2", "icon": "2", "i3": "workspace number 2" },
-        { "label": "Workspace 3", "icon": "3", "i3": "workspace number 3" },
-        { "label": "Workspace 4", "icon": "4", "i3": "workspace number 4" },
-
-        { "label": "Fullscreen", "icon": "up", "i3": "fullscreen toggle" },
-        { "label": "Float", "icon": "copy", "i3": "floating toggle" },
-        { "label": "Split horiz", "icon": "right", "i3": "split h" },
-        { "label": "Split vert", "icon": "down", "i3": "split v" },
-
-        { "label": "Tabbed", "icon": "list", "i3": "layout tabbed" },
-        { "label": "Tiled", "icon": "bars", "i3": "layout toggle split" },
-        { "label": "Reload i3", "icon": "loop", "i3": "reload" },
-        { "label": "Close window", "icon": "close", "type": "confirm", "i3": "kill" }
+        {
+          "label": "Workspace 1",
+          "icon": "1",
+          "i3": "workspace number 1"
+        },
+        {
+          "label": "Workspace 2",
+          "icon": "2",
+          "i3": "workspace number 2"
+        },
+        {
+          "label": "Workspace 3",
+          "icon": "3",
+          "i3": "workspace number 3"
+        },
+        {
+          "label": "Workspace 4",
+          "icon": "4",
+          "i3": "workspace number 4"
+        },
+        {
+          "label": "Fullscreen",
+          "icon": "up",
+          "i3": "fullscreen toggle"
+        },
+        {
+          "label": "Float",
+          "icon": "copy",
+          "i3": "floating toggle"
+        },
+        {
+          "label": "Split horiz",
+          "icon": "right",
+          "i3": "split h"
+        },
+        {
+          "label": "Split vert",
+          "icon": "down",
+          "i3": "split v"
+        },
+        {
+          "label": "Tabbed",
+          "icon": "list",
+          "i3": "layout tabbed"
+        },
+        {
+          "label": "Tiled",
+          "icon": "bars",
+          "i3": "layout toggle split"
+        },
+        {
+          "label": "Reload i3",
+          "icon": "loop",
+          "i3": "reload"
+        },
+        {
+          "label": "Close window",
+          "icon": "close",
+          "type": "confirm",
+          "i3": "kill"
+        }
       ]
     },
     {
       "name": "DOCKER",
       "buttons": [
-        { "label": "Compose up", "icon": "upload", "color": "ok", "wait": true,
-          "run": "cd ~/stacks && docker compose up -d" },
-        { "label": "Compose pull", "icon": "download", "wait": true,
-          "run": "cd ~/stacks && docker compose pull" },
-        { "label": "docker stats", "icon": "bars", "run": "alacritty -e docker stats" },
-        { "label": "Containers", "icon": "list", "type": "page", "page": 3 },
-
-        { "label": "Compose down", "icon": "stop", "type": "confirm",
-          "run": "cd ~/stacks && docker compose down" },
-        { "label": "Prune images", "icon": "trash", "type": "confirm", "wait": true,
-          "run": "docker image prune -f" }
+        {
+          "label": "Compose up",
+          "icon": "upload",
+          "color": "ok",
+          "wait": true,
+          "run": "cd ~/stacks && docker compose up -d"
+        },
+        {
+          "label": "Compose pull",
+          "icon": "download",
+          "wait": true,
+          "run": "cd ~/stacks && docker compose pull"
+        },
+        {
+          "label": "docker stats",
+          "icon": "bars",
+          "run": "alacritty -e docker stats"
+        },
+        {
+          "label": "Containers",
+          "icon": "list",
+          "type": "page",
+          "page": 3
+        },
+        {
+          "label": "Compose down",
+          "icon": "stop",
+          "type": "confirm",
+          "run": "cd ~/stacks && docker compose down"
+        },
+        {
+          "label": "Prune images",
+          "icon": "trash",
+          "type": "confirm",
+          "wait": true,
+          "run": "docker image prune -f"
+        }
       ]
     },
     {
       "name": "MEDIA",
       "buttons": [
-        { "label": "Previous", "icon": "prev", "run": "playerctl previous" },
-        { "label": "Play / pause", "icon": "play", "color": "ok", "run": "playerctl play-pause" },
-        { "label": "Next", "icon": "next", "run": "playerctl next" },
-        { "label": "Mixer", "icon": "audio", "type": "page", "page": 0 },
-
-        { "label": "Volume down", "icon": "minus", "run": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" },
-        { "label": "Volume up", "icon": "plus", "run": "wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+" },
-        { "label": "Mute", "icon": "mute", "run": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" },
-        { "label": "Bluetooth audio", "icon": "bluetooth", "run": "alacritty -e bluetoothctl" }
+        {
+          "label": "Previous",
+          "icon": "prev",
+          "run": "playerctl previous"
+        },
+        {
+          "label": "Play / pause",
+          "icon": "play",
+          "color": "ok",
+          "run": "playerctl play-pause"
+        },
+        {
+          "label": "Next",
+          "icon": "next",
+          "run": "playerctl next"
+        },
+        {
+          "label": "Mixer",
+          "icon": "audio",
+          "type": "page",
+          "page": 0
+        },
+        {
+          "label": "Volume down",
+          "icon": "minus",
+          "run": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
+        },
+        {
+          "label": "Volume up",
+          "icon": "plus",
+          "run": "wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+"
+        },
+        {
+          "label": "Mute",
+          "icon": "mute",
+          "run": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+        },
+        {
+          "label": "Bluetooth audio",
+          "icon": "bluetooth",
+          "run": "alacritty -e bluetoothctl"
+        }
+      ]
+    },
+    {
+      "name": "HOME",
+      "buttons": [
+        {
+          "label": "Lab lights",
+          "icon": "charge",
+          "type": "toggle",
+          "mqtt": {
+            "state_topic": "home/lab/lights/state",
+            "command_topic": "home/lab/lights/set",
+            "payload_on": "ON",
+            "payload_off": "OFF"
+          }
+        },
+        {
+          "label": "Desk fan",
+          "icon": "loop",
+          "type": "toggle",
+          "mqtt": {
+            "state_topic": "home/lab/fan/state",
+            "command_topic": "home/lab/fan/set"
+          }
+        },
+        {
+          "label": "Movie scene",
+          "icon": "video",
+          "color": "hi",
+          "mqtt": {
+            "command_topic": "home/scenes/activate",
+            "payload": "movie"
+          }
+        },
+        {
+          "label": "All off",
+          "icon": "power",
+          "type": "confirm",
+          "mqtt": {
+            "command_topic": "home/scenes/activate",
+            "payload": "all_off"
+          }
+        }
       ]
     }
   ]
